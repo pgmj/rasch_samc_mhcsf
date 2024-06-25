@@ -1,0 +1,123 @@
+---
+title: "Reproducible Rasch analysis with R and Quarto"
+subtitle: "Workshop on using RISEkbmRasch"
+title-block-banner: "#870052"
+title-block-banner-color: "#FFFFFF"
+
+author: 
+  name: Magnus Johansson, PhD
+  affiliation: RISE Research Institutes of Sweden
+  affiliation-url: https://ri.se/shic
+  orcid: 0000-0003-1669-592X
+date: 2024-06-12
+date-format: YYYY-MM-DD
+format: 
+  revealjs:
+    theme: [night, custom2.scss]
+    chalkboard: false
+    self-contained: true
+    slide-level: 4
+    scrollable: true
+    smaller: false
+    center: false
+    logo: RISE_NEG.png
+    footer: 'magnus.p.johansson@ri.se'
+    #preload-iframes: true
+    multiplex: false
+    reference-location: document
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: false
+editor_options: 
+  chunk_output_type: console
+bibliography: references.bib
+---
+
+## Today's agenda {background-color="#009ca6"}
+
+- *09.00-10.15* Session1: Using a template to set up a project and import data.
+- **10.15-10.45 Break**
+- *10.45-12.00* Session 2: Live coding & analysis of a new dataset, and participant can work with their own data and get hands-on support.
+
+### Useful links - `github.com/pgmj`
+
+- intro lecture on Rasch/IRT: <https://pgmj.github.io/RaschIRTlecture/slides.html>
+-   the RISEkbmRasch package: <https://github.com/pgmj/RISEkbmRasch>
+-   vignette for the package: <https://pgmj.github.io/raschrvignette/RaschRvign.html>
+-   intro course to Rstudio & Quarto: [https://github.com/pgmj/RstudioQuartoIntro](https://github.com/pgmj/RstudioQuartoIntro#introduction-to-reproducible-data-analysis-with-r-and-quarto)
+
+## Why R?
+
+-   open source & free
+-   available for Windows/Mac/Linux/etc
+-   potentially easier for others to reproduce and learn from your results
+
+### But...
+
+Plots and other output still needs copying to a text document to collect the output and document the analysis
+
+-   challenging to reproduce results
+    -   especially if you go back to an old project
+
+### Quarto & Rstudio
+
+<https://quarto.org>
+
+-   documentation in the same document as the analysis code!
+-   can output PDF, Word, HTML, PPT
+  - you can write complete papers in Quarto!
+-   makes reproducibility simple
+-   pre-installed with Rstudio
+    -   (yes, it is like "Rmarkdown 2.0")
+
+### What is an R package?
+
+- a collection of `functions()`
+- `RISEkbmRasch` relies 100% on other packages
+  - it can be described as a "wrapper" package
+- it is also an "opinionated" package
+  - pre-set cutoff values, etc
+
+### Package ambitions
+
+-   **make it as simple as possible to get key tables and figures**
+-   you can choose cut-off values for highlighting in most functions, for instance:
+    -   item fit over/under a certain value
+    -   residual correlations relative to average residual correlations
+-   more functions and flexibility gradually added (but also adds complexity)
+
+## Choices made
+
+There are multiple R packages for Rasch analysis.
+
+-   I went with `eRm` primarily
+    -   handles dichotomous and polytomous data
+    -   uses CML, conditional maximum likelihood
+        -   "specific objectivity"
+        -   ordinal sum score as a "sufficient metric"
+-   `mirt` for Yen's Q3 residuals
+-   `psychotree` and `eRm::LRtest()` for DIF (differential item functioning)
+
+### Required data structure
+
+-   one dataframe with **item data ONLY**
+    -   coded as integers starting with 0 for lowest response category
+-   one dataframe with item descriptions
+-   DIF variables as separate vectors or a separate dataframe
+
+### Analysis template
+
+- You have downloaded a zip-file with the template
+  - URL to zip-file was emailed to participants last week
+- Repo on GitHub gets updates: <https://github.com/pgmj/RISEraschTemplate>
+  - designed to be cloned with git
+  - I'll also add a zip-file to the repo later on
+
+## Let's get started!
+
+- EXTRACT the zip file (Windows users: do not double click the file!)
+- Open the Rstudio project in the unzipped folder
+- Also make sure to have the package vignette open (for reference)
+

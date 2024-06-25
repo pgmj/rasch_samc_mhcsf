@@ -1,0 +1,645 @@
+---
+title: "Rasch analysis"
+subtitle: "Template file"
+title-block-banner: "#009ca6"
+title-block-banner-color: "#FFFFFF"
+author: 
+  name: Magnus Johansson
+  affiliation: RISE Research Institutes of Sweden
+  affiliation-url: https://www.ri.se/en/kbm
+  orcid: 0000-0003-1669-592X
+date: last-modified
+date-format: iso
+always_allow_html: true
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Table of contents"
+    embed-resources: true
+    standalone: true
+    page-layout: full
+    mainfont: 'Lato'
+    monofont: 'Roboto Mono'
+    code-overflow: wrap
+    code-fold: true
+    code-tools: true
+    code-link: true
+    number-sections: true
+    fig-dpi: 96
+    layout-align: left
+    linestretch: 1.6
+    theme:
+      - materia
+      - custom.scss
+    css: styles.css
+    license: CC BY
+  pdf:
+    papersize: a4
+    documentclass: report 
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: true
+editor_options: 
+  markdown: 
+    wrap: 72
+  chunk_output_type: console
+bibliography:
+  - references.bib
+  - grateful-refs.bib
+---
+
+```{r}
+#| label: setup
+
+# one package below requires that you use devtools to install them manually:
+# first install devtools by
+# install.packages('devtools')
+
+library(RISEkbmRasch) # devtools::install_github("pgmj/RISEkbmRasch")
+library(grateful)
+library(ggrepel)
+library(car)
+library(kableExtra)
+library(readxl)
+library(tidyverse)
+library(eRm)
+library(mirt)
+library(psych)
+library(psychotree)
+library(matrixStats)
+library(reshape)
+library(knitr)
+library(patchwork)
+library(formattable) 
+library(glue)
+
+### optional libraries
+#library(TAM)
+#library(skimr)
+#library(janitor)
+
+### some commands exist in multiple packages, here we define preferred ones that are frequently used
+select <- dplyr::select
+count <- dplyr::count
+recode <- car::recode
+rename <- dplyr::rename
+```
+
+Our data comes from an open dataset [@echeverría] connected to a paper validating the Spanish version of the Mental Health Continuum-Short Form Questionnaire [MHC-SF; @echeverría2017].
+
+```{r}
+### import data - this is just sample code, the files do not exist
+library(readxl) # for reading excel files
+df.all <- read_excel("data/data_sMHCSF_Echeverria2017.xlsx")
+df <- df.all
+### create dif variables
+dif.sex <- factor(df$Sex)
+df$Sex <- NULL
+# check levels with 
+#levels(dif.sex)
+
+### label gender variable as factor
+# dif.gender <- factor(dif.gender,
+#                       levels = c(1,2,3),
+#                       labels = c("Female", "Male", "Other/missing response"))
+
+### Load item information
+# make sure that variable names in df match with itemlabels$itemnr
+itemlabels <- read_excel("data/itemlabels_MHC_SF.xlsx") %>% 
+  mutate(item = str_squish(item))
+
+# match df variable names to itemlabels$itemnr variable
+names(df) <- itemlabels$itemnr
+
+# recode response categories to numbers
+df <- df %>%
+  mutate(across(everything(), ~ car::recode(.x,"'Never'=0;'1 or 2 times a month'=1;'About 1 time a week'=2;'About 2 or 3 times a week'=3;'Almost daily'=4;'Daily'=5", as.factor = FALSE)))
+```
+
+
+```{r}
+##### Optionally: filter participants based on missing data
+
+##### Before filtering out participants, you should check the missing data structure using RImissing() and RImissingP()
+
+# If you want to include participants with missing data, input the minimum number of items responses that a participant should have to be included in the analysis:
+# min.responses <- 3
+# 
+# # Select the variables we will work with, and filter out respondents with a lot of missing data
+# df <- df %>% 
+#   select(starts_with("item"),Sex,Age) %>%  # variables that start with "item", and DIF-variables Sex and Age
+#   filter(length(itemlabels$itemnr)-rowSums(is.na(.[itemlabels$itemnr])) >= min.responses) # include only respondents with data for at least 3 items
+# 
+# #---- OR just filter out all respondents with any missing data----
+# df <- df %>% 
+#   select(starts_with("WAAQ"),Sex,Age) %>% 
+#   #mutate(across(where(is.character), ~ as.numeric(.x))) %>% # if data is input as characters, we need to convert to numeric
+#   na.omit()
+```
+
+
+```{r}
+# optionally, load RISE ggplot theme and color palettes and set the theme as default.
+# just comment out the row below if you desire different theming
+source("RISE_theme.R")
+```
+
+## All items in the analysis
+```{r}
+RIlistitems(df)
+```
+
+## Demographics
+```{r}
+#| layout-ncol: 2
+RIdemographics(dif.sex, "Gender")
+```
+
+### Descriptives of raw data
+
+Response distribution for all items are summarized below.
+
+```{r}
+#| tbl-cap: "Total number of responses for all items"
+RIallresp(df)
+```
+
+### Descriptives - item level
+
+```{r}
+#| column: margin
+RIlistItemsMargin(df, fontsize = 12)
+```
+
+::: panel-tabset
+#### Tile plot
+```{r}
+RItileplot(df)
+```
+#### Stacked bars
+```{r}
+RIbarstack(df)
+```
+#### Barplots
+```{r}
+#| layout-ncol: 2
+RIbarplot(df)
+```
+#### Missing responses
+```{r}
+RImissing(df)
+```
+:::
+
+
+## Rasch analysis 1
+
+The eRm package, which uses Conditional Maximum Likelihood (CML)
+estimation, will be used primarily. For this analysis, the Partial
+Credit Model will be used.
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+### Item fit
+```{r}
+RIitemfitPCM2(df,samplesize = 250,nsamples = 4)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(na.omit(df))
+```
+### Residual correlations
+```{r}
+RIresidcorr(df, cutoff = 0.2)
+```
+### 1st contrast loadings
+```{r}
+RIloadLoc(df)
+```
+### Many items ICC
+```{r}
+mirt(df, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-6,6))
+```
+### Fewer items ICC
+```{r}
+RIitemCats(df)
+```
+
+### Targeting
+```{r}
+#| fig-height: 8
+# increase fig-height above as needed, if you have many items
+RItargeting(df,bins = 50)
+```
+### Item hierarchy
+```{r}
+#| fig-height: 8
+RIitemHierarchy(df)
+```
+:::
+
+mhc5 is high in item fit, and also deviant in loadings on 1st residual contrast.
+
+PCA eigenvalue is above 2, there clearly is multidimensionality.
+
+Two clusters in residual correlations:
+
+- items 1-3
+- items 6-8
+
+Response category thresholds are disordered for many items.
+
+- 'Never'=0;
+- '1 or 2 times a month'=1;
+- 'About 1 time a week'=2;
+- 'About 2 or 3 times a week'=3;
+- 'Almost daily'=4;
+- 'Daily'=5
+
+```{r}
+df %>% 
+  mutate(across(everything(), ~ recode(.x, "3=2;4=3;5=4"))) %>% 
+  RItileplot()
+
+df.backup <- df
+
+df <- df %>% 
+  mutate(across(everything(), ~ recode(.x, "3=2;4=3;5=4")))
+  
+```
+
+### ICC check after recode
+```{r}
+mirt(df, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-6,6))
+```
+
+```{r}
+removed.items <- c("mhc5")
+
+#df$mhc5 <- NULL
+
+df <- df %>% 
+  select(!any_of(removed.items))
+
+```
+
+
+## Rasch 2
+
+We removed item mhc5 due to high item fit and deviant 1st contrast loadings.
+
+Response category 2 and 3 were merged, this is now "1-3 times a week".
+
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+### Item fit
+```{r}
+RIitemfitPCM2(df,samplesize = 250,nsamples = 4)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(na.omit(df))
+```
+### Residual correlations
+```{r}
+RIresidcorr(df, cutoff = 0.2)
+```
+### 1st contrast loadings
+```{r}
+RIloadLoc(df)
+```
+### Many items ICC
+```{r}
+mirt(df, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-6,6))
+```
+### Fewer items ICC
+```{r}
+RIitemCats(df)
+```
+
+### Targeting
+```{r}
+#| fig-height: 8
+# increase fig-height above as needed, if you have many items
+RItargeting(df,bins = 50)
+```
+### Item hierarchy
+```{r}
+#| fig-height: 8
+RIitemHierarchy(df)
+```
+:::
+
+We still have two clusters of residual correlations.
+
+- Items 1-3
+- 6-8
+
+It looks like item 1 has the best targeting and item fit, we remove 2 and 3.
+
+Item 7 has better distance between response categories, we remove 6 and 8.
+
+```{r}
+removed.items <- c("mhc5","mhc2","mhc3","mhc6","mhc8")
+
+#df$mhc5 <- NULL
+
+df.backup2 <- df
+
+df <- df %>% 
+  select(!any_of(removed.items))
+
+```
+
+
+## Rasch 3
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+### Item fit
+```{r}
+RIitemfitPCM2(df,samplesize = 250,nsamples = 4)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(na.omit(df))
+```
+### Residual correlations
+```{r}
+RIresidcorr(df, cutoff = 0.2)
+```
+### 1st contrast loadings
+```{r}
+RIloadLoc(df)
+```
+### Many items ICC
+```{r}
+mirt(df, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-6,6))
+```
+### Fewer items ICC
+```{r}
+RIitemCats(df)
+```
+
+### Targeting
+```{r}
+#| fig-height: 8
+# increase fig-height above as needed, if you have many items
+RItargeting(df,bins = 50)
+```
+### Item hierarchy
+```{r}
+#| fig-height: 8
+RIitemHierarchy(df)
+```
+:::
+
+Item 7 has high item fit and deviant loadings on the 1st residual contrast. We will remove it.
+
+No residual correlations remain.
+
+```{r}
+removed.items <- c("mhc5","mhc2","mhc3","mhc6","mhc8","mhc7")
+
+#df$mhc5 <- NULL
+
+df.backup3 <- df
+
+df <- df %>% 
+  select(!any_of(removed.items))
+
+```
+
+## Rasch 4
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+### Item fit
+```{r}
+RIitemfitPCM2(df,samplesize = 250,nsamples = 4)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(na.omit(df))
+```
+### Residual correlations
+```{r}
+RIresidcorr(df, cutoff = 0.2)
+```
+### 1st contrast loadings
+```{r}
+RIloadLoc(df)
+```
+### Many items ICC
+```{r}
+mirt(df, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-6,6))
+```
+### Fewer items ICC
+```{r}
+RIitemCats(df)
+```
+
+### Targeting
+```{r}
+#| fig-height: 8
+# increase fig-height above as needed, if you have many items
+RItargeting(df,bins = 50)
+```
+### Item hierarchy
+```{r}
+#| fig-height: 8
+RIitemHierarchy(df)
+```
+:::
+
+
+## LRT-based DIF
+
+```{r}
+erm.out <- PCM(df)
+LRtest(erm.out, splitcr = dif.sex) 
+```
+
+Review the documentation for further details, using `?LRtest` in your R console panel in Rstudio. There is also a plotting function, `plotGOF()` that may be of interest.
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+#### Item location table
+```{r}
+RIdifTableLR(df, dif.sex)
+
+```
+#### Item location figure
+```{r}
+#| fig-height: 7
+RIdifFigureLR(df, dif.sex)
+
+```
+#### Item threshold table
+```{r}
+RIdifThreshTblLR(df, dif.sex)
+
+```
+#### Item threshold figure
+```{r}
+#| fig-height: 7
+RIdifThreshFigLR(df, dif.sex)
+
+```
+:::
+
+## DIF-analysis 2
+
+### Gender
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(df, fontsize = 13)
+```
+
+::: panel-tabset
+#### Table
+```{r}
+RIdifTable(df, dif.sex)
+```
+#### Locations
+```{r}
+RIdifFigure(df, dif.sex)
+```
+#### Thresholds
+```{r}
+RIdifFigThresh(df, dif.sex)
+```
+:::
+
+### Person location & infit ZSTD
+```{r}
+RIpfit(df)
+```
+
+## Test Information (Reliability)
+```{r}
+RItif(df)
+```
+
+## lordif
+
+```{r}
+#| results: hide
+library(lordif)
+
+g_dif <- lordif(as.data.frame(df), as.numeric(dif.sex), # make sure that the data is in a dataframe-object and that the DIF variable is numeric
+                criterion = c("Chisqr"), 
+                alpha = 0.01, 
+                beta.change = 0.1,
+                model = "GPCM",
+                R2.change = 0.02)
+
+g_dif_sum <- summary(g_dif)
+```
+
+```{r}
+# threshold values for colorizing the table below
+alpha = 0.01
+beta.change = 0.1
+R2.change = 0.02
+
+g_dif_sum$stats %>% 
+  as.data.frame() %>% 
+  select(!all_of(c("item","df12","df13","df23"))) %>% 
+  round(3) %>% 
+  add_column(itemnr = names(df), .before = "ncat") %>% 
+  mutate(across(c(chi12,chi13,chi23), ~ cell_spec(.x,
+                               color = case_when(
+                                 .x < alpha ~ "red",
+                                 TRUE ~ "black"
+                               )))) %>%
+  mutate(across(starts_with("pseudo"), ~ cell_spec(.x,
+                               color = case_when(
+                                 .x > R2.change ~ "red",
+                                 TRUE ~ "black"
+                               )))) %>%
+  mutate(beta12 =  cell_spec(beta12,
+                               color = case_when(
+                                 beta12 > beta.change ~ "red",
+                                 TRUE ~ "black"
+                               ))) %>% 
+  kbl_rise()
+```
+
+We can review the results regarding uniform/non-uniform DIF by looking at the `chi*` columns. Uniform DIF is indicated by column `chi12` and non-uniform DIF by `chi23`, while column `chi13` represents "an overall test of "total DIF effect" [@choi_lordif_2011].
+
+## Item parameters
+```{r}
+RIitemparams(df)
+```
+
+## Transformation table
+
+```{r}
+RIscoreSE(df,score_range = c(-4,5))
+```
+
+## Ordinal/interval figure
+
+```{r}
+RIscoreSE(df, output = "figure", score_range = c(-4,5))
+```
+
+
+## Software used
+```{r}
+pkgs <- cite_packages(cite.tidyverse = TRUE, 
+                      output = "table",
+                      bib.file = "grateful-refs.bib",
+                      include.RStudio = TRUE,
+                      out.dir = getwd())
+formattable(pkgs, 
+            table.attr = 'class=\"table table-striped\" style="font-size: 15px; font-family: Lato; width: 80%"')
+
+```
+
+## References
