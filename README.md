@@ -1,6 +1,6 @@
 ## About this repo
 
-This code repository contains materials used and produced at the Scandinavian Applied Measurement Conference 2024 pre-conference workshop titled *"Reproducible Rasch analysis with R and Quarto - Workshop on using RISEkbmRasch"*.
+This code repository contains materials used and produced at the [Scandinavian Applied Measurement Conference 2024](https://www.hkr.se/en/collaboration/samc2024/) pre-conference workshop titled [*"Reproducible Rasch analysis with R and Quarto - Workshop on using RISEkbmRasch"*](https://www.hkr.se/en/collaboration/samc2024/pre-conference/).
 
 The main file is `analysis.qmd`, which outputs an HTML report file that is available at <https://pgmj.github.io/rasch_samc_mhcsf/analysis.html>
 
