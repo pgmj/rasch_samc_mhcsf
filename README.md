@@ -6,7 +6,7 @@ The main file is `analysis.qmd`, which outputs an HTML report file that is avail
 
 The introductory slides were also produced using Quarto in the file `samc_workshop2024.qmd`, and the presentation is available at <https://pgmj.github.io/rasch_samc_mhcsf/samc_workshop2024.html>
 
-Additionally, presentation slides for "Analyzing polytomous data using Rasch PCM in R - a simulation study comparing TAM (MML) and eRm (CML)" is available for download (PPTX file) at <https://pgmj.github.io/rasch_samc_mhcsf/2024-06-14 SAMC simulation study MJ.pptx> or in the /docs subfolder.
+Additionally, presentation slides for "Analyzing polytomous data using Rasch PCM in R - a simulation study comparing TAM (MML) and eRm (CML)" is available for download (PPTX file) in the /docs subfolder.
 
 
 ## Author
